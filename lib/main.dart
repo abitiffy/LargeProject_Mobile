@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:fl_chart/fl_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -16,7 +18,42 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Auth App',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        brightness: Brightness.light,
+        useMaterial3: true,
+
+        // Primary branding color
+        colorScheme: ColorScheme.light(
+          primary: const Color(0xFF0B0E2A),        // Dark blue
+          onPrimary: Colors.white,
+          secondary: const Color(0xFFD8D7D0),      // Muted gray-beige
+          onSecondary: const Color(0xFF0B0E2A),
+          background: const Color(0xFFF4F0E6),     // Light cream
+          onBackground: const Color(0xFF0B0E2A),
+          surface: const Color(0xFFD8D7D0),
+          onSurface: const Color(0xFF0B0E2A),
+        ),
+
+        scaffoldBackgroundColor: const Color(0xFFF4F0E6),
+
+        appBarTheme: const AppBarTheme(
+          foregroundColor: Color(0xFFD8D7D0),
+          backgroundColor: Color(0xFF0B0E2A),
+          elevation: 0,
+        ),
+
+        textTheme: const TextTheme(
+          headlineLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Color(0xFF0B0E2A)),
+          bodyMedium: TextStyle(fontSize: 16, color: Color(0xFF0B0E2A)),
+        ),
+
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF0B0E2A),
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+        ),
       ),
       initialRoute: '/login',
       routes: {
@@ -24,6 +61,9 @@ class MyApp extends StatelessWidget {
         '/register': (_) => const RegisterScreen(),
         '/dashboard': (_) => const DashboardScreen(),
         '/logout': (_) => const LogoutScreen(),
+        '/sleep': (_) => const SleepPage(),
+        '/work': (_) => const LeisurePage(),
+        '/leisure': (_) => const LeisurePage(),
       },
     );
   }
@@ -244,7 +284,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const List<Widget> _widgetOptions = <Widget>[
     DashboardContents(),
     LeaderboardScreen(),
-    SelectScreen(),
+    RecordPage(),
     HistoryScreen(),
     LogoutScreen(),
   ];
@@ -263,10 +303,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Leaderboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Play'),
-          BottomNavigationBarItem(icon: Icon(Icons.business), label: 'History'),
-          BottomNavigationBarItem(icon: Icon(Icons.school), label: 'Logout'),
+          BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: 'Leaderboard'),
+          BottomNavigationBarItem(icon: Icon(Icons.play_arrow), label: 'Play'),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
+          BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Logout'),
         ],
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.amber[800],
@@ -465,30 +505,7 @@ class SelectScreen extends StatelessWidget {
   }
 }
 
-class HistoryScreen extends StatelessWidget {
-  const HistoryScreen({super.key});
 
-  Future<void> logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (context.mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () => logout(context),
-          child: const Text('Logout'),
-        ),
-      ),
-    );
-  }
-}
 
 
 class LogoutScreen extends StatelessWidget {
@@ -516,3 +533,593 @@ class LogoutScreen extends StatelessWidget {
   }
 }
 
+class HistoryScreen extends StatefulWidget {
+  const HistoryScreen({super.key});
+
+  @override
+  State<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  List<dynamic> activities = [];
+  bool isLoading = true;
+  String error = '';
+
+  @override
+  void initState() {
+    super.initState();
+    loadUserActivities();
+  }
+
+  Future<void> loadUserActivities() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userID = prefs.getString('UserID');
+
+    if (userID == null) {
+      setState(() {
+        error = 'User ID not found.';
+        isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://cop4331group3.xyz/api/activities/retrievehistory'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'UserID': userID}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          activities = data['activities'] ?? [];
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          error = 'Server error: ${response.statusCode}';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        error = 'Error: $e';
+        isLoading = false;
+      });
+    }
+  }
+
+  void handleEdit(String activityId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ActivityID', activityId);
+    Navigator.pushNamed(context, '/edithistoricalrecord');
+  }
+
+  List<FlSpot> toSpots(List<num> values) {
+    return values.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.toDouble())).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    List<num> work = [];
+    List<num> leisure = [];
+    List<num> sleep = [];
+    List<num> points = [];
+    work = activities.map<num>((a) => (a['recordedDailyWorkMinutes'] ?? 0) as num).toList();
+    leisure = activities.map<num>((a) => (a['recordedDailyLeisureMinutes'] ?? 0) as num).toList();
+    sleep = activities.map<num>((a) => (a['recordedDailySleepMinutes'] ?? 0) as num).toList();
+    points = activities.map<num>((a) => (a['totalDailyPts'] ?? 0) as num).toList();
+    final labels = activities.map((a) {
+      final timestamp = a['recordTimestamp'];
+      if (timestamp != null) {
+        final dt = DateTime.tryParse(timestamp);
+        if (dt != null) return '${dt.month}/${dt.day}';
+      }
+      return '';
+    }).toList();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Activity History')),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : error.isNotEmpty
+          ? Center(child: Text(error))
+          : SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const Text('Activity Trends', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 300,
+                child: LineChart(
+                  LineChartData(
+                    lineBarsData: [
+                      LineChartBarData(spots: toSpots(work), isCurved: true, color: Colors.blue, barWidth: 2, dotData: FlDotData(show: false)),
+                      LineChartBarData(spots: toSpots(leisure), isCurved: true, color: Colors.purple, barWidth: 2, dotData: FlDotData(show: false)),
+                      LineChartBarData(spots: toSpots(sleep), isCurved: true, color: Colors.green, barWidth: 2, dotData: FlDotData(show: false)),
+                      LineChartBarData(spots: toSpots(points), isCurved: true, color: Colors.orange, barWidth: 2, dotData: FlDotData(show: false)),
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 1,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index >= 0 && index < labels.length) {
+                              return Text(labels[index], style: const TextStyle(fontSize: 10));
+                            }
+                            return const Text('');
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: true, interval: 60),
+                      ),
+                    ),
+                    gridData: FlGridData(show: true),
+                    borderData: FlBorderData(show: true),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 30),
+              const Text('Daily Activity Log', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              Table(
+                border: TableBorder.all(),
+                columnWidths: const {
+                  0: FlexColumnWidth(),
+                  1: FlexColumnWidth(),
+                  2: FlexColumnWidth(),
+                  3: FlexColumnWidth(),
+                  4: FlexColumnWidth(),
+                  5: FixedColumnWidth(80),
+                },
+                children: [
+                  const TableRow(
+                    decoration: BoxDecoration(color: Colors.grey),
+                    children: [
+                      Padding(padding: EdgeInsets.all(8), child: Text('Date', textAlign: TextAlign.center)),
+                      Padding(padding: EdgeInsets.all(8), child: Text('Work', textAlign: TextAlign.center)),
+                      Padding(padding: EdgeInsets.all(8), child: Text('Leisure', textAlign: TextAlign.center)),
+                      Padding(padding: EdgeInsets.all(8), child: Text('Sleep', textAlign: TextAlign.center)),
+                      Padding(padding: EdgeInsets.all(8), child: Text('Points', textAlign: TextAlign.center)),
+                      Padding(padding: EdgeInsets.all(8), child: Text('Edit', textAlign: TextAlign.center)),
+                    ],
+                  ),
+                  if (activities.isEmpty)
+                    const TableRow(children: [
+                      Padding(
+                        padding: EdgeInsets.all(8),
+                        child: Text('No history data available.', textAlign: TextAlign.center),
+                      ),
+                      SizedBox(), SizedBox(), SizedBox(), SizedBox(), SizedBox(),
+                    ])
+                  else
+                    ...activities.map((activity) {
+                      return TableRow(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(activity['recordTimestamp'] ?? '', textAlign: TextAlign.center),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text('${activity['recordedDailyWorkMinutes'] ?? 0}', textAlign: TextAlign.center),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text('${activity['recordedDailyLeisureMinutes'] ?? 0}', textAlign: TextAlign.center),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text('${activity['recordedDailySleepMinutes'] ?? 0}', textAlign: TextAlign.center),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text('${activity['totalDailyPts'] ?? 0}', textAlign: TextAlign.center),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: ElevatedButton(
+                              onPressed: () => handleEdit(activity['_id']),
+                              child: const Text('Edit'),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList()
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class RecordPage extends StatelessWidget {
+  const RecordPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Choose Your Activity')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'CHOOSE YOUR ACTIVITY',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              Wrap(
+                spacing: 16,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/sleep');
+                    },
+                    child: const Text('SLEEP'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/work');
+                    },
+                    child: const Text('WORK'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/leisure');
+                    },
+                    child: const Text('LEISURE'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
+class SleepPage extends StatefulWidget {
+  const SleepPage({super.key});
+
+  @override
+  State<SleepPage> createState() => _SleepPageState();
+}
+
+class _SleepPageState extends State<SleepPage> {
+  int timer = 0;
+  Timer? timeInterval;
+  String? userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+  }
+
+  Future<void> _loadUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userId = prefs.getString("UserID");
+    });
+  }
+
+  void startTimer() {
+    timeInterval?.cancel(); // Prevent multiple intervals
+    timeInterval = Timer.periodic(const Duration(seconds: 1), (timerTick) {
+      setState(() {
+        timer++;
+      });
+    });
+  }
+
+  void pauseTimer() {
+    timeInterval?.cancel();
+  }
+
+  void resetTimer() {
+    timeInterval?.cancel();
+    setState(() {
+      timer = 0;
+    });
+  }
+
+  Future<void> endTimer() async {
+    if (userId == null) return;
+
+    final response = await http.post(
+      Uri.parse("https://cop4331group3.xyz/api/activities/timerupdateforday"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "UserID": userId,
+        "timerTime": timer / 60,
+        "timerType": "Sleep",
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      debugPrint("Failed to submit sleep timer");
+    }
+  }
+
+  @override
+  void dispose() {
+    timeInterval?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text("Sleep")),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("Sleep Timer", style: TextStyle(fontSize: 32)),
+              const SizedBox(height: 16),
+              Text(
+                "$timer seconds",
+                style: const TextStyle(fontSize: 24),
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 12,
+                children: [
+                  ElevatedButton(
+                    onPressed: startTimer,
+                    child: const Text("Start"),
+                  ),
+                  ElevatedButton(
+                    onPressed: pauseTimer,
+                    child: const Text("Pause"),
+                  ),
+                  ElevatedButton(
+                    onPressed: resetTimer,
+                    child: const Text("Reset"),
+                  ),
+                  ElevatedButton(
+                    onPressed: endTimer,
+                    child: const Text("Submit"),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class WorkScreen extends StatefulWidget {
+  const WorkScreen({super.key});
+
+  @override
+  State<WorkScreen> createState() => _WorkScreenState();
+}
+
+class _WorkScreenState extends State<WorkScreen> {
+  int timer = 0;
+  Timer? timeInterval;
+  String? userId;
+
+  @override
+  void initState() {
+    super.initState();
+    loadUserId();
+  }
+
+  Future<void> loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userId = prefs.getString('UserID');
+    });
+  }
+
+  void startTimer() {
+    timeInterval = Timer.periodic(const Duration(seconds: 1), (Timer t) {
+      setState(() {
+        timer++;
+      });
+    });
+  }
+
+  void pauseTimer() {
+    timeInterval?.cancel();
+  }
+
+  void resetTimer() {
+    pauseTimer();
+    setState(() {
+      timer = 0;
+    });
+  }
+
+  Future<void> endTimer(String? userID, double timerTime, String timerType) async {
+    if (userID == null) return;
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://cop4331group3.xyz/api/activities/timerupdateforday'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'UserID': userID,
+          'timerTime': timerTime,
+          'timerType': timerType,
+        }),
+      );
+
+      final result = jsonDecode(response.body);
+      print("Submitted successfully: $result");
+    } catch (e) {
+      print('Error submitting timer: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    timeInterval?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Work')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Work',
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            Text('Timer: $timer seconds', style: const TextStyle(fontSize: 20)),
+            const SizedBox(height: 30),
+            Wrap(
+              spacing: 10,
+              children: [
+                ElevatedButton(onPressed: startTimer, child: const Text('Start')),
+                ElevatedButton(onPressed: pauseTimer, child: const Text('Pause')),
+                ElevatedButton(onPressed: resetTimer, child: const Text('Reset')),
+                ElevatedButton(
+                  onPressed: () => endTimer(userId, timer / 60, 'Work'),
+                  child: const Text('SUBMIT'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class LeisurePage extends StatefulWidget {
+  const LeisurePage({super.key});
+
+  @override
+  State<LeisurePage> createState() => _LeisurePageState();
+}
+
+class _LeisurePageState extends State<LeisurePage> {
+  int _timer = 0;
+  Timer? _timeInterval;
+  String? _userID;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserID();
+  }
+
+  Future<void> _loadUserID() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _userID = prefs.getString('UserID');
+    });
+  }
+
+  void _startTimer() {
+    _timeInterval?.cancel();
+    _timeInterval = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _timer++;
+      });
+    });
+  }
+
+  void _pauseTimer() {
+    _timeInterval?.cancel();
+  }
+
+  void _resetTimer() {
+    _pauseTimer();
+    setState(() {
+      _timer = 0;
+    });
+  }
+
+  Future<void> _endTimer() async {
+    if (_userID == null) return;
+
+    final response = await http.post(
+      Uri.parse('https://cop4331group3.xyz/api/activities/timerupdateforday'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'UserID': _userID,
+        'timerTime': _timer / 60,
+        'timerType': 'Leisure',
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      print('Error: ${response.statusCode}');
+    }
+  }
+
+  @override
+  void dispose() {
+    _timeInterval?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Leisure')),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Leisure',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Timer: $_timer',
+                style: const TextStyle(fontSize: 24),
+              ),
+              const SizedBox(height: 24),
+              Wrap(
+                spacing: 12,
+                children: [
+                  ElevatedButton(onPressed: _startTimer, child: const Text('Start')),
+                  ElevatedButton(onPressed: _pauseTimer, child: const Text('Pause')),
+                  ElevatedButton(onPressed: _resetTimer, child: const Text('Reset')),
+                  ElevatedButton(
+                    onPressed: _endTimer,
+                    child: const Text('SUBMIT'),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
