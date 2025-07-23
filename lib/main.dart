@@ -169,18 +169,18 @@ class _DashboardContentsState extends State<DashboardContents> {
   Future<void> retrieveData() async {
     try {
       final response = await http.post(
-        Uri.parse('https://cop4331group3.xyz/api/activities/retrievehistory'),
+        Uri.parse('https://cop4331group3.xyz/api/activities/retrievehomepagedata'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'UserID': '68636ea8c7cdc121c9e613ed'}),
+        body: jsonEncode({'UserID': '687efa0963cfd7fb076a74d2'}),
       );
 
 
 
       if (response.statusCode == 200) {
-        print('Raw response body: ${response.body}');
-        print('Status: ${response.statusCode}');
-        print('Body: "${response.body}"');
-        print('Headers: ${response.headers}');
+        //print('Raw response body: ${response.body}');
+        //print('Status: ${response.statusCode}');
+        //print('Body: "${response.body}"');
+        //print('Headers: ${response.headers}');
         final jsonBody = json.decode(response.body);
         setState(() {
           data = jsonBody;
@@ -222,8 +222,9 @@ class _DashboardContentsState extends State<DashboardContents> {
             const Text("Welcome"),
 
             Text("You have ${data?['recordedDailyWorkMinutes']} minutes in work"),
-            Text("You have ${data?['recordedLeisureMinutes']} minutes in leisure"),
-            Text("You have ${data?['recordedSleepMinutes']} minutes in sleep"),
+            Text("You have ${data?['recordedDailyLeisureMinutes']} minutes in leisure"),
+            Text("You have ${data?['recordedDailySleepMinutes']} minutes in sleep"),
+            Text("You have ${data?['totalDailyPts']} points"),
           ],
         ),
       ),
@@ -275,49 +276,139 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class LeaderboardScreen extends StatelessWidget {
+class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
 
-  Future<void> logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (context.mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () => logout(context),
-          child: const Text('Logout'),
-        ),
-      ),
-    );
-  }
+  State<LeaderboardScreen> createState() => _LeaderboardScreenState();
 }
-class LogoutScreen extends StatelessWidget {
-  const LogoutScreen({super.key});
 
-  Future<void> logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (context.mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
+class _LeaderboardScreenState extends State<LeaderboardScreen> {
+  List<dynamic> users = [];
+  bool isLoading = true;
+  String error = '';
+
+  @override
+  void initState() {
+    super.initState();
+    fetchLeaderboard();
+  }
+
+  Future<void> fetchLeaderboard() async {
+    try {
+      // Replace with your actual API call
+      final response = await http.post(
+        Uri.parse('https://cop4331group3.xyz/api/activities/displayleaderboard'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'UserID': '687efa0963cfd7fb076a74d2'}),
+      );
+
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        setState(() {
+          users = body['users'] ?? [];
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          error = 'Failed to load leaderboard';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        error = 'Error: $e';
+        isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () => logout(context),
-          child: const Text('Logout'),
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            const Text(
+              'LEADERBOARD',
+              style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            if (isLoading)
+              const CircularProgressIndicator()
+            else
+              if (error.isNotEmpty)
+                Text(error, style: const TextStyle(color: Colors.red))
+              else
+                Table(
+                  border: TableBorder.all(),
+                  columnWidths: const {
+                    0: FlexColumnWidth(),
+                    1: FlexColumnWidth(),
+                    2: FlexColumnWidth(),
+                  },
+                  children: [
+                    const TableRow(
+                      decoration: BoxDecoration(color: Colors.grey),
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Text(
+                              'First Name', textAlign: TextAlign.center),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Text('Last Name', textAlign: TextAlign.center),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: Text(
+                              'Weekly Points', textAlign: TextAlign.center),
+                        ),
+                      ],
+                    ),
+                    if (users.isEmpty)
+                      const TableRow(
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text('No leaderboard data available.',
+                                textAlign: TextAlign.center),
+                          ),
+                          SizedBox(),
+                          SizedBox(),
+                        ],
+                      )
+                    else
+                      ...users.map<TableRow>((user) {
+                        return TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(user['firstName'] ?? '',
+                                  textAlign: TextAlign.center),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(user['lastName'] ?? '',
+                                  textAlign: TextAlign.center),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(
+                                  user['weeklyPts']?.toString() ?? '0',
+                                  textAlign: TextAlign.center),
+                            ),
+                          ],
+                        );
+                      }).toList()
+                  ],
+                ),
+          ],
         ),
       ),
     );
@@ -398,3 +489,30 @@ class HistoryScreen extends StatelessWidget {
     );
   }
 }
+
+
+class LogoutScreen extends StatelessWidget {
+  const LogoutScreen({super.key});
+
+  Future<void> logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (context.mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () => logout(context),
+          child: const Text('Logout'),
+        ),
+      ),
+    );
+  }
+}
+
