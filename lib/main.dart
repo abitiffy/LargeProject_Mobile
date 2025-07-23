@@ -64,6 +64,8 @@ class MyApp extends StatelessWidget {
         '/sleep': (_) => const SleepPage(),
         '/work': (_) => const LeisurePage(),
         '/leisure': (_) => const LeisurePage(),
+        '/edithistoricalrecord':(_) => const EditHistoricalRecord(),
+        '/edittoday':(_) => const EditTodaysStuff(),
       },
     );
   }
@@ -274,6 +276,7 @@ class _DashboardContentsState extends State<DashboardContents> {
             Text("You have ${data?['recordedDailyLeisureMinutes']} minutes in leisure"),
             Text("You have ${data?['recordedDailySleepMinutes']} minutes in sleep"),
             Text("You have ${data?['totalDailyPts']} points"),
+            TextButton(onPressed: () => Navigator.pushNamed(context, '/edittoday'), child: const Text("Edit today's points")),
           ],
         ),
       ),
@@ -529,7 +532,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final response = await http.post(
         Uri.parse('https://cop4331group3.xyz/api/activities/retrievehistory'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'UserID': '687efa0963cfd7fb076a74d2'}),
+        body: jsonEncode({'UserID': userID}),
       );
 
       if (response.statusCode == 200) {
@@ -1178,3 +1181,307 @@ class _LeisurePageState extends State<LeisurePage> {
     );
   }
 }
+
+
+
+
+
+class EditHistoricalRecord extends StatefulWidget {
+  const EditHistoricalRecord({super.key});
+
+  @override
+  State<EditHistoricalRecord> createState() => _EditHistoricalRecordState();
+}
+
+class _EditHistoricalRecordState extends State<EditHistoricalRecord> {
+  final TextEditingController workController = TextEditingController();
+  final TextEditingController leisureController = TextEditingController();
+  final TextEditingController sleepController = TextEditingController();
+
+  String? activityID;
+  String? error;
+  String? success;
+
+  @override
+  void initState() {
+    super.initState();
+    loadActivityID();
+  }
+
+  Future<void> loadActivityID() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedID = prefs.getString('ActivityID');
+
+    if (storedID == null) {
+      setState(() => error = 'No activity selected for editing.');
+      return;
+    }
+
+    setState(() => activityID = storedID);
+    fetchHistoricalData(storedID);
+  }
+
+  Future<void> fetchHistoricalData(String id) async {
+    try {
+      final res = await http.post(
+        Uri.parse('https://cop4331group3.xyz/api/activities/retrievetoedithistory'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'ActivityID': id}),
+      );
+
+      if (res.statusCode != 200) {
+        throw Exception('HTTP error! status: ${res.statusCode}');
+      }
+
+      final data = json.decode(res.body);
+      setState(() {
+        workController.text = data['recordedDailyWorkMinutes']?.toString() ?? '';
+        leisureController.text = data['recordedDailyLeisureMinutes']?.toString() ?? '';
+        sleepController.text = data['recordedDailySleepMinutes']?.toString() ?? '';
+      });
+    } catch (e) {
+      setState(() => error = 'Failed to load activity data.');
+    }
+  }
+
+  Future<void> handleSubmit() async {
+    try {
+      final res = await http.post(
+        Uri.parse('https://cop4331group3.xyz/api/activities/edithistoricalcategories'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'ActivityID': activityID,
+          'updatedWorkMinutes': workController.text,
+          'updatedLeisureMinutes': leisureController.text,
+          'updatedSleepMinutes': sleepController.text,
+        }),
+      );
+
+      final data = json.decode(res.body);
+      if (res.statusCode != 200) {
+        throw Exception(data['error'] ?? 'Something went wrong');
+      }
+
+      setState(() => success = 'Successfully updated historical record!');
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('ActivityID');
+
+      Future.delayed(const Duration(seconds: 2), () {
+        Navigator.pushReplacementNamed(context, '/history');
+      });
+    } catch (e) {
+      setState(() => error = e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Edit Historical Record',
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+
+              const Text("Work Minutes"),
+              TextField(
+                controller: workController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 16),
+              const Text("Leisure Minutes"),
+              TextField(
+                controller: leisureController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 16),
+              const Text("Sleep Minutes"),
+              TextField(
+                controller: sleepController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: handleSubmit,
+                child: const Text('Submit'),
+              ),
+
+              if (error != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Text(error!, style: const TextStyle(color: Colors.red)),
+                ),
+
+              if (success != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Text(success!, style: const TextStyle(color: Colors.green)),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+class EditTodaysStuff extends StatefulWidget {
+  const EditTodaysStuff({super.key});
+
+  @override
+  State<EditTodaysStuff> createState() => _EditTodaysStuffState();
+}
+
+class _EditTodaysStuffState extends State<EditTodaysStuff> {
+  String? error;
+  String? success;
+
+  TextEditingController workController = TextEditingController();
+  TextEditingController leisureController = TextEditingController();
+  TextEditingController sleepController = TextEditingController();
+
+  String? userID;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserIDAndFetchData();
+  }
+
+  Future<void> _loadUserIDAndFetchData() async {
+    final prefs = await SharedPreferences.getInstance();
+    userID = prefs.getString('UserID');
+    if (userID != null) {
+      _fetchTodayFields();
+    } else {
+      setState(() => error = "No user ID found.");
+    }
+  }
+
+  Future<void> _fetchTodayFields() async {
+    try {
+      final res = await http.post(
+        Uri.parse("https://cop4331group3.xyz/api/activities/retrievetodayeditfields"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"UserID": userID}),
+      );
+
+      if (res.statusCode != 200) throw Exception("Status: ${res.statusCode}");
+
+      final data = jsonDecode(res.body);
+
+      setState(() {
+        workController.text = data['recordedDailyWorkMinutes']?.toString() ?? "";
+        leisureController.text = data['recordedDailyLeisureMinutes']?.toString() ?? "";
+        sleepController.text = data['recordedDailySleepMinutes']?.toString() ?? "";
+      });
+    } catch (e) {
+      setState(() => error = "Failed to load today's minutes.");
+    }
+  }
+
+  Future<void> _handleSubmit() async {
+    try {
+      final res = await http.post(
+        Uri.parse("https://cop4331group3.xyz/api/activities/editcategories"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "UserID": userID,
+          "updatedWorkMinutes": workController.text,
+          "updatedLeisureMinutes": leisureController.text,
+          "updatedSleepMinutes": sleepController.text,
+        }),
+      );
+
+      final data = jsonDecode(res.body);
+
+      if (res.statusCode != 200) {
+        throw Exception(data['error'] ?? "Something went wrong");
+      }
+
+      setState(() => success = "Successfully updated categories!");
+
+      Future.delayed(const Duration(seconds: 1), () {
+        Navigator.of(context).pushReplacementNamed("/dashboard");
+      });
+    } catch (e) {
+      setState(() => error = e.toString());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "Edit Today's Stuff",
+                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+
+              const Text("Work Minutes"),
+              TextField(
+                controller: workController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 20),
+              const Text("Leisure Minutes"),
+              TextField(
+                controller: leisureController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 20),
+              const Text("Sleep Minutes"),
+              TextField(
+                controller: sleepController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 30),
+              ElevatedButton(
+                onPressed: _handleSubmit,
+                child: const Text("Submit"),
+              ),
+
+              if (error != null) ...[
+                const SizedBox(height: 20),
+                Text(error!, style: const TextStyle(color: Colors.red)),
+              ],
+              if (success != null) ...[
+                const SizedBox(height: 20),
+                Text(success!, style: const TextStyle(color: Colors.green)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+
