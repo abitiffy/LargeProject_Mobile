@@ -2,11 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'pages/logout.dart';
-import 'pages/select.dart';
-import 'pages/play.dart';
-import 'pages/history.dart';
-import 'pages/leaderboard.dart';
 
 void main() {
   runApp(const MyApp());
@@ -159,25 +154,77 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 }
 
-class DashboardContents extends StatelessWidget {
+class DashboardContents extends StatefulWidget {
   const DashboardContents({super.key});
 
-  Future<void> logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (context.mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
+  @override
+  State<DashboardContents> createState() => _DashboardContentsState();
+}
+
+class _DashboardContentsState extends State<DashboardContents> {
+  String error = '';
+  Map<String, dynamic>? data; // nullable to check if it's loaded
+  bool isLoading = true;
+
+  Future<void> retrieveData() async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://cop4331group3.xyz/api/activities/retrievehistory'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'UserID': '68636ea8c7cdc121c9e613ed'}),
+      );
+
+
+
+      if (response.statusCode == 200) {
+        print('Raw response body: ${response.body}');
+        print('Status: ${response.statusCode}');
+        print('Body: "${response.body}"');
+        print('Headers: ${response.headers}');
+        final jsonBody = json.decode(response.body);
+        setState(() {
+          data = jsonBody;
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          error = 'Server error: ${response.statusCode}';
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        error = 'Exception: $e';
+        isLoading = false;
+      });
     }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    retrieveData(); // only run once
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Dashboard')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () => logout(context),
-          child: const Text('Logout'),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : error.isNotEmpty
+            ? Text(error)
+            : Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Welcome"),
+
+            Text("You have ${data?['recordedDailyWorkMinutes']} minutes in work"),
+            Text("You have ${data?['recordedLeisureMinutes']} minutes in leisure"),
+            Text("You have ${data?['recordedSleepMinutes']} minutes in sleep"),
+          ],
         ),
       ),
     );
@@ -223,6 +270,130 @@ class _DashboardScreenState extends State<DashboardScreen> {
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.amber[800],
         onTap: _onItemTapped,
+      ),
+    );
+  }
+}
+
+class LeaderboardScreen extends StatelessWidget {
+  const LeaderboardScreen({super.key});
+
+  Future<void> logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (context.mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () => logout(context),
+          child: const Text('Logout'),
+        ),
+      ),
+    );
+  }
+}
+class LogoutScreen extends StatelessWidget {
+  const LogoutScreen({super.key});
+
+  Future<void> logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (context.mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () => logout(context),
+          child: const Text('Logout'),
+        ),
+      ),
+    );
+  }
+}
+
+class PlayScreen extends StatelessWidget {
+  const PlayScreen({super.key});
+
+  Future<void> logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (context.mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () => logout(context),
+          child: const Text('Logout'),
+        ),
+      ),
+    );
+  }
+}
+
+class SelectScreen extends StatelessWidget {
+  const SelectScreen({super.key});
+
+  Future<void> logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (context.mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () => logout(context),
+          child: const Text('Logout'),
+        ),
+      ),
+    );
+  }
+}
+
+class HistoryScreen extends StatelessWidget {
+  const HistoryScreen({super.key});
+
+  Future<void> logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    if (context.mounted) {
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dashboard')),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: () => logout(context),
+          child: const Text('Logout'),
+        ),
       ),
     );
   }
