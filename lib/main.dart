@@ -109,10 +109,14 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: Container(
+        padding: const EdgeInsets.fromLTRB(20,80,20,40),
+        alignment: Alignment.center,
         child: Column(children: [
+          const Text(
+            'LOGIN',
+            style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+          ),
           TextField(controller: emailCtrl, decoration: const InputDecoration(labelText: 'Email')),
           TextField(controller: passwordCtrl, decoration: const InputDecoration(labelText: 'Password'), obscureText: true),
           const SizedBox(height: 16),
@@ -249,16 +253,21 @@ class _DashboardContentsState extends State<DashboardContents> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: Container(
+        padding: const EdgeInsets.fromLTRB(20,80,20,40),
+        alignment: Alignment.center,
         child: isLoading
             ? const Center(child: CircularProgressIndicator())
             : error.isNotEmpty
             ? Text(error)
             : Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            const Text(
+              'HOME',
+              style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold),
+            ),
             const Text("Welcome"),
 
             Text("You have ${data?['recordedDailyWorkMinutes']} minutes in work"),
@@ -298,19 +307,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('BottomNavigationBar Sample')),
       body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
       bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
+        items:
+        const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.leaderboard), label: 'Leaderboard'),
           BottomNavigationBarItem(icon: Icon(Icons.play_arrow), label: 'Play'),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: 'History'),
           BottomNavigationBarItem(icon: Icon(Icons.logout), label: 'Logout'),
+
         ],
         currentIndex: _selectedIndex,
+        unselectedItemColor: const Color(0xFF0B0E2A),
         selectedItemColor: Colors.amber[800],
         onTap: _onItemTapped,
+        backgroundColor: const Color(0xFF0B0E2A),
       ),
     );
   }
@@ -367,10 +379,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return Scaffold(
+      body: Container(
+        padding: const EdgeInsets.fromLTRB(20,80,20,40),
+        alignment: Alignment.center,
         child: Column(
           children: [
             const Text(
@@ -455,55 +467,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 }
 
-class PlayScreen extends StatelessWidget {
-  const PlayScreen({super.key});
-
-  Future<void> logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (context.mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () => logout(context),
-          child: const Text('Logout'),
-        ),
-      ),
-    );
-  }
-}
-
-class SelectScreen extends StatelessWidget {
-  const SelectScreen({super.key});
-
-  Future<void> logout(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (context.mounted) {
-      Navigator.pushReplacementNamed(context, '/login');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: () => logout(context),
-          child: const Text('Logout'),
-        ),
-      ),
-    );
-  }
-}
 
 
 
@@ -522,7 +485,6 @@ class LogoutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Dashboard')),
       body: Center(
         child: ElevatedButton(
           onPressed: () => logout(context),
@@ -567,7 +529,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final response = await http.post(
         Uri.parse('https://cop4331group3.xyz/api/activities/retrievehistory'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'UserID': userID}),
+        body: jsonEncode({'UserID': '687efa0963cfd7fb076a74d2'}),
       );
 
       if (response.statusCode == 200) {
@@ -620,17 +582,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Activity History')),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : error.isNotEmpty
           ? Center(child: Text(error))
           : SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(20,80,20,40),
+          alignment: Alignment.center,
           child: Column(
             children: [
-              const Text('Activity Trends', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const Text('ACTIVITY HISTORY', style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               SizedBox(
                 height: 300,
@@ -638,8 +600,105 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   LineChartData(
                     lineBarsData: [
                       LineChartBarData(spots: toSpots(work), isCurved: true, color: Colors.blue, barWidth: 2, dotData: FlDotData(show: false)),
+                      //LineChartBarData(spots: toSpots(leisure), isCurved: true, color: Colors.purple, barWidth: 2, dotData: FlDotData(show: false)),
+                      //LineChartBarData(spots: toSpots(sleep), isCurved: true, color: Colors.green, barWidth: 2, dotData: FlDotData(show: false)),
+                      //LineChartBarData(spots: toSpots(points), isCurved: true, color: Colors.orange, barWidth: 2, dotData: FlDotData(show: false)),
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 1,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index >= 0 && index < labels.length) {
+                              return Text(labels[index], style: const TextStyle(fontSize: 10));
+                            }
+                            return const Text('');
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: true, interval: 60),
+                      ),
+                    ),
+                    gridData: FlGridData(show: true),
+                    borderData: FlBorderData(show: true),
+                  ),
+                ),
+              ),SizedBox(
+                height: 300,
+                child: LineChart(
+                  LineChartData(
+                    lineBarsData: [
+                      //LineChartBarData(spots: toSpots(work), isCurved: true, color: Colors.blue, barWidth: 2, dotData: FlDotData(show: false)),
                       LineChartBarData(spots: toSpots(leisure), isCurved: true, color: Colors.purple, barWidth: 2, dotData: FlDotData(show: false)),
+                      //LineChartBarData(spots: toSpots(sleep), isCurved: true, color: Colors.green, barWidth: 2, dotData: FlDotData(show: false)),
+                      //LineChartBarData(spots: toSpots(points), isCurved: true, color: Colors.orange, barWidth: 2, dotData: FlDotData(show: false)),
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 1,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index >= 0 && index < labels.length) {
+                              return Text(labels[index], style: const TextStyle(fontSize: 10));
+                            }
+                            return const Text('');
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: true, interval: 60),
+                      ),
+                    ),
+                    gridData: FlGridData(show: true),
+                    borderData: FlBorderData(show: true),
+                  ),
+                ),
+              ),SizedBox(
+                height: 300,
+                child: LineChart(
+                  LineChartData(
+                    lineBarsData: [
+                      //LineChartBarData(spots: toSpots(work), isCurved: true, color: Colors.blue, barWidth: 2, dotData: FlDotData(show: false)),
+                      //LineChartBarData(spots: toSpots(leisure), isCurved: true, color: Colors.purple, barWidth: 2, dotData: FlDotData(show: false)),
                       LineChartBarData(spots: toSpots(sleep), isCurved: true, color: Colors.green, barWidth: 2, dotData: FlDotData(show: false)),
+                      //LineChartBarData(spots: toSpots(points), isCurved: true, color: Colors.orange, barWidth: 2, dotData: FlDotData(show: false)),
+                    ],
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 1,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index >= 0 && index < labels.length) {
+                              return Text(labels[index], style: const TextStyle(fontSize: 10));
+                            }
+                            return const Text('');
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: true, interval: 60),
+                      ),
+                    ),
+                    gridData: FlGridData(show: true),
+                    borderData: FlBorderData(show: true),
+                  ),
+                ),
+              ),
+              SizedBox(
+                height: 300,
+                child: LineChart(
+                  LineChartData(
+                    lineBarsData: [
+                      //LineChartBarData(spots: toSpots(work), isCurved: true, color: Colors.blue, barWidth: 2, dotData: FlDotData(show: false)),
+                      //LineChartBarData(spots: toSpots(leisure), isCurved: true, color: Colors.purple, barWidth: 2, dotData: FlDotData(show: false)),
+                      //LineChartBarData(spots: toSpots(sleep), isCurved: true, color: Colors.green, barWidth: 2, dotData: FlDotData(show: false)),
                       LineChartBarData(spots: toSpots(points), isCurved: true, color: Colors.orange, barWidth: 2, dotData: FlDotData(show: false)),
                     ],
                     titlesData: FlTitlesData(
@@ -749,7 +808,6 @@ class RecordPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Choose Your Activity')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -867,7 +925,6 @@ class _SleepPageState extends State<SleepPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Sleep")),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -984,7 +1041,6 @@ class _WorkScreenState extends State<WorkScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Work')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1087,7 +1143,6 @@ class _LeisurePageState extends State<LeisurePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Leisure')),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
