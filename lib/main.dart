@@ -53,6 +53,12 @@ class MyApp extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           ),
+
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: const Color(0xFF0B0E2A), // Navy blue
+          selectedItemColor: Colors.white,
+          unselectedItemColor: Colors.grey[400],
         ),
       ),
       initialRoute: '/login',
@@ -62,7 +68,7 @@ class MyApp extends StatelessWidget {
         '/dashboard': (_) => const DashboardScreen(),
         '/logout': (_) => const LogoutScreen(),
         '/sleep': (_) => const SleepPage(),
-        '/work': (_) => const LeisurePage(),
+        '/work': (_) => const WorkScreen(),
         '/leisure': (_) => const LeisurePage(),
         '/edithistoricalrecord':(_) => const EditHistoricalRecord(),
         '/edittoday':(_) => const EditTodaysStuff(),
@@ -211,13 +217,27 @@ class _DashboardContentsState extends State<DashboardContents> {
   String error = '';
   Map<String, dynamic>? data; // nullable to check if it's loaded
   bool isLoading = true;
+  String? userID;
+
+  Future<void> loadUserActivities() async {
+    final prefs = await SharedPreferences.getInstance();
+    userID = prefs.getString('UserID');
+
+    if (userID == null) {
+      setState(() {
+        error = 'User ID not found.';
+        isLoading = false;
+      });
+      return;
+    }}
 
   Future<void> retrieveData() async {
     try {
+      loadUserActivities();
       final response = await http.post(
         Uri.parse('https://cop4331group3.xyz/api/activities/retrievehomepagedata'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'UserID': '687efa0963cfd7fb076a74d2'}),
+        body: jsonEncode({'UserID': userID}),//TODO: not sure if this is gonna work
       );
 
 
@@ -254,6 +274,7 @@ class _DashboardContentsState extends State<DashboardContents> {
 
   @override
   Widget build(BuildContext context) {
+    retrieveData();
     return Scaffold(
       body: Container(
         padding: const EdgeInsets.fromLTRB(20,80,20,40),
@@ -272,10 +293,10 @@ class _DashboardContentsState extends State<DashboardContents> {
             ),
             const Text("Welcome"),
 
-            Text("You have ${data?['recordedDailyWorkMinutes']} minutes in work"),
-            Text("You have ${data?['recordedDailyLeisureMinutes']} minutes in leisure"),
-            Text("You have ${data?['recordedDailySleepMinutes']} minutes in sleep"),
-            Text("You have ${data?['totalDailyPts']} points"),
+            Text("You have ${(data?['recordedDailyWorkMinutes']?? 0).toStringAsFixed(2)} minutes in work"),
+            Text("You have ${(data?['recordedDailyLeisureMinutes']?? 0).toStringAsFixed(2)} minutes in leisure"),
+            Text("You have ${(data?['recordedDailySleepMinutes']?? 0).toStringAsFixed(2)} minutes in sleep"),
+            Text("You have ${(data?['totalDailyPts']?? 0).toStringAsFixed(2)} points"),
             TextButton(onPressed: () => Navigator.pushNamed(context, '/edittoday'), child: const Text("Edit today's points")),
           ],
         ),
@@ -323,7 +344,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
         currentIndex: _selectedIndex,
         unselectedItemColor: const Color(0xFF0B0E2A),
-        selectedItemColor: Colors.amber[800],
+        selectedItemColor: const Color(0xFF0B0E2A),
         onTap: _onItemTapped,
         backgroundColor: const Color(0xFF0B0E2A),
       ),
@@ -342,6 +363,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   List<dynamic> users = [];
   bool isLoading = true;
   String error = '';
+
 
   @override
   void initState() {
@@ -400,7 +422,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 Text(error, style: const TextStyle(color: Colors.red))
               else
                 Table(
-                  border: TableBorder.all(),
+                  border: TableBorder.all(color: const Color(0xffd8d7d0)),
                   columnWidths: const {
                     0: FlexColumnWidth(),
                     1: FlexColumnWidth(),
@@ -408,7 +430,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   },
                   children: [
                     const TableRow(
-                      decoration: BoxDecoration(color: Colors.grey),
+                      decoration: BoxDecoration(color: const Color(0xffd8d7d0)),
                       children: [
                         Padding(
                           padding: EdgeInsets.all(8.0),
@@ -455,7 +477,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                             Padding(
                               padding: const EdgeInsets.all(8.0),
                               child: Text(
-                                  user['weeklyPts']?.toString() ?? '0',
+                                  user['weeklyPts']?.toStringAsFixed(2) ?? '0',
                                   textAlign: TextAlign.center),
                             ),
                           ],
@@ -599,6 +621,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               const SizedBox(height: 16),
               SizedBox(
                 height: 300,
+                width: MediaQuery.of(context).size.width * 0.8,
                 child: LineChart(
                   LineChartData(
                     lineBarsData: [
@@ -610,7 +633,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     titlesData: FlTitlesData(
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
-                          showTitles: true,
+                          showTitles: false,//TODO: used to be true
                           interval: 1,
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
@@ -622,15 +645,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                       ),
                       leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: true, interval: 60),
+                        sideTitles: SideTitles(showTitles: false, interval: 60),
                       ),
                     ),
-                    gridData: FlGridData(show: true),
+                    gridData: FlGridData(show: false),
                     borderData: FlBorderData(show: true),
                   ),
                 ),
-              ),SizedBox(
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
                 height: 300,
+                width: MediaQuery.of(context).size.width * 0.8,
                 child: LineChart(
                   LineChartData(
                     lineBarsData: [
@@ -642,7 +668,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     titlesData: FlTitlesData(
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
-                          showTitles: true,
+                          showTitles: false,
                           interval: 1,
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
@@ -654,15 +680,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                       ),
                       leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: true, interval: 60),
+                        sideTitles: SideTitles(showTitles: false, interval: 60),
                       ),
                     ),
-                    gridData: FlGridData(show: true),
+                    gridData: FlGridData(show: false),
                     borderData: FlBorderData(show: true),
                   ),
                 ),
-              ),SizedBox(
+              ),
+              const SizedBox(height: 40),
+              SizedBox(
                 height: 300,
+                width: MediaQuery.of(context).size.width * 0.8,
                 child: LineChart(
                   LineChartData(
                     lineBarsData: [
@@ -674,7 +703,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     titlesData: FlTitlesData(
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
-                          showTitles: true,
+                          showTitles: false,
                           interval: 1,
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
@@ -686,16 +715,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                       ),
                       leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: true, interval: 60),
+                        sideTitles: SideTitles(showTitles: false, interval: 60),
                       ),
                     ),
-                    gridData: FlGridData(show: true),
+                    gridData: FlGridData(show: false),
                     borderData: FlBorderData(show: true),
                   ),
                 ),
               ),
+              const SizedBox(height: 40),
               SizedBox(
                 height: 300,
+                width: MediaQuery.of(context).size.width * 0.8,
                 child: LineChart(
                   LineChartData(
                     lineBarsData: [
@@ -707,7 +738,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     titlesData: FlTitlesData(
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
-                          showTitles: true,
+                          showTitles: false,
                           interval: 1,
                           getTitlesWidget: (value, meta) {
                             final index = value.toInt();
@@ -719,10 +750,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         ),
                       ),
                       leftTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: true, interval: 60),
+                        sideTitles: SideTitles(showTitles: false, interval: 60),
                       ),
                     ),
-                    gridData: FlGridData(show: true),
+                    gridData: FlGridData(show: false),
                     borderData: FlBorderData(show: true),
                   ),
                 ),
@@ -731,7 +762,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               const Text('Daily Activity Log', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
               Table(
-                border: TableBorder.all(),
+                border: TableBorder.all(color: const Color(0xffd8d7d0)),
                 columnWidths: const {
                   0: FlexColumnWidth(),
                   1: FlexColumnWidth(),
@@ -742,13 +773,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 },
                 children: [
                   const TableRow(
-                    decoration: BoxDecoration(color: Colors.grey),
+                    decoration: BoxDecoration(color: const Color(0xffd8d7d0)),
                     children: [
                       Padding(padding: EdgeInsets.all(8), child: Text('Date', textAlign: TextAlign.center)),
                       Padding(padding: EdgeInsets.all(8), child: Text('Work', textAlign: TextAlign.center)),
                       Padding(padding: EdgeInsets.all(8), child: Text('Leisure', textAlign: TextAlign.center)),
                       Padding(padding: EdgeInsets.all(8), child: Text('Sleep', textAlign: TextAlign.center)),
-                      Padding(padding: EdgeInsets.all(8), child: Text('Points', textAlign: TextAlign.center)),
+                      Padding(padding: EdgeInsets.all(8), child: Text('Pts', textAlign: TextAlign.center)),
                       Padding(padding: EdgeInsets.all(8), child: Text('Edit', textAlign: TextAlign.center)),
                     ],
                   ),
@@ -770,25 +801,25 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           ),
                           Padding(
                             padding: const EdgeInsets.all(8),
-                            child: Text('${activity['recordedDailyWorkMinutes'] ?? 0}', textAlign: TextAlign.center),
+                            child: Text('${(activity['recordedDailyWorkMinutes'] ?? 0).toStringAsFixed(2)}', textAlign: TextAlign.center),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(8),
-                            child: Text('${activity['recordedDailyLeisureMinutes'] ?? 0}', textAlign: TextAlign.center),
+                            child: Text('${(activity['recordedDailyLeisureMinutes'] ?? 0).toStringAsFixed(2)}', textAlign: TextAlign.center),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(8),
-                            child: Text('${activity['recordedDailySleepMinutes'] ?? 0}', textAlign: TextAlign.center),
+                            child: Text('${(activity['recordedDailySleepMinutes'] ?? 0).toStringAsFixed(2)}', textAlign: TextAlign.center),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(8),
-                            child: Text('${activity['totalDailyPts'] ?? 0}', textAlign: TextAlign.center),
+                            child: Text('${(activity['totalDailyPts'] ?? 0).toStringAsFixed(2)}', textAlign: TextAlign.center),
                           ),
                           Padding(
                             padding: const EdgeInsets.all(8),
                             child: ElevatedButton(
                               onPressed: () => handleEdit(activity['_id']),
-                              child: const Text('Edit'),
+                              child: const Icon(Icons.edit),
                             ),
                           ),
                         ],
@@ -1235,9 +1266,9 @@ class _EditHistoricalRecordState extends State<EditHistoricalRecord> {
 
       final data = json.decode(res.body);
       setState(() {
-        workController.text = data['recordedDailyWorkMinutes']?.toString() ?? '';
-        leisureController.text = data['recordedDailyLeisureMinutes']?.toString() ?? '';
-        sleepController.text = data['recordedDailySleepMinutes']?.toString() ?? '';
+        workController.text = data['recordedDailyWorkMinutes']?.toStringAsFixed(2) ?? '';
+        leisureController.text = data['recordedDailyLeisureMinutes']?.toStringAsFixed(2) ?? '';
+        sleepController.text = data['recordedDailySleepMinutes']?.toStringAsFixed(2) ?? '';
       });
     } catch (e) {
       setState(() => error = 'Failed to load activity data.');
@@ -1385,9 +1416,9 @@ class _EditTodaysStuffState extends State<EditTodaysStuff> {
       final data = jsonDecode(res.body);
 
       setState(() {
-        workController.text = data['recordedDailyWorkMinutes']?.toString() ?? "";
-        leisureController.text = data['recordedDailyLeisureMinutes']?.toString() ?? "";
-        sleepController.text = data['recordedDailySleepMinutes']?.toString() ?? "";
+        workController.text = data['recordedDailyWorkMinutes']?.toStringAsFixed(2) ?? "";
+        leisureController.text = data['recordedDailyLeisureMinutes']?.toStringAsFixed(2) ?? "";
+        sleepController.text = data['recordedDailySleepMinutes']?.toStringAsFixed(2) ?? "";
       });
     } catch (e) {
       setState(() => error = "Failed to load today's minutes.");
